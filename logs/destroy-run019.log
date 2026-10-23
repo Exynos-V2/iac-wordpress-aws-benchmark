@@ -1,0 +1,18 @@
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mNo valid credential sources found[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with provider["registry.terraform.io/hashicorp/aws"],
+[31m│[0m [0m  on versions.tf line 28, in provider "aws":
+[31m│[0m [0m  28: provider "aws" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mPlease see https://registry.terraform.io/providers/hashicorp/aws
+[31m│[0m [0mfor more information about providing credentials.
+[31m│[0m [0m
+[31m│[0m [0mError: failed to refresh cached credentials, no EC2 IMDS role found,
+[31m│[0m [0moperation error ec2imds: GetMetadata, exceeded maximum number of attempts,
+[31m│[0m [0m3, request send failed, Get
+[31m│[0m [0m"http://169.254.169.254/latest/meta-data/iam/security-credentials/": dial
+[31m│[0m [0mtcp 169.254.169.254:80: connectex: A socket operation was attempted to an
+[31m│[0m [0munreachable network.
+[31m│[0m [0m
+[31m╵[0m[0m

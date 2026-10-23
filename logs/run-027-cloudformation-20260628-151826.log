@@ -1,0 +1,9 @@
+==> Deploying skripsi-iac-cfn-1 (network + data + builder + WordPress via cfn-init)
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+Successfully created/updated stack - skripsi-iac-cfn-1
+==> Baking golden AMI from builder i-05ecba318bfcef307
+==> Waiting for AMI ami-018e2f3cb3be204c8 to become available
+
+aws: [ERROR]: Waiter ImageAvailable failed: Max attempts exceeded

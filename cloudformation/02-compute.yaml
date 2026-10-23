@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Skripsi IaC - CloudFormation Stack 2 (compute/serving). Launch Template using the golden
+  AMI baked from Stack 1's builder, an Auto Scaling Group in the private-app subnets, and an
+  ALB + target group + listener in the public subnets. Network/data resource ids are passed
+  in as parameters by deploy.sh (read from Stack 1 outputs).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: skripsi-iac
+  StackLabel:
+    Type: String
+    Default: cfn
+  GoldenAmiId:
+    Type: AWS::EC2::Image::Id
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnetBId:
+    Type: AWS::EC2::Subnet::Id
+  PrivateAppSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+  PrivateAppSubnetBId:
+    Type: AWS::EC2::Subnet::Id
+  SgAlbId:
+    Type: AWS::EC2::SecurityGroup::Id
+  SgAppId:
+    Type: AWS::EC2::SecurityGroup::Id
+  AppInstanceType:
+    Type: String
+    Default: t3.small
+  DesiredCapacity:
+    Type: Number
+    Default: 2
+  MinSize:
+    Type: Number
+    Default: 2
+  MaxSize:
+    Type: Number
+    Default: 4
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${ProjectName}-${StackLabel}-lt"
+      LaunchTemplateData:
+        ImageId: !Ref GoldenAmiId
+        InstanceType: !Ref AppInstanceType
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile:
+          Name: !Ref InstanceProfileName
+        # Golden-AMI instances self-heal on boot: mount EFS from fstab and ensure the web
+        # stack is enabled+running, so health checks pass even if systemd ordering / the
+        # --no-reboot snapshot left a service down. (Terraform's reboot-baked AMI doesn't
+        # need this; CloudFormation's bake is not reboot-validated by default.)
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            mount -a || true
+            systemctl enable --now php8.3-fpm || true
+            systemctl enable --now nginx || true
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: false
+            Groups: [ !Ref SgAppId ]
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-wp-asg" }
+              - { Key: Project, Value: !Ref ProjectName }
+              - { Key: Stack, Value: !Ref StackLabel }
+              - { Key: ManagedBy, Value: cloudformation }
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${ProjectName}-${StackLabel}-tg"
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      # WordPress redirects to /wp-admin/install.php on first hit.
+      Matcher: { HttpCode: "200,301,302" }
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-tg" } ]
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ProjectName}-${StackLabel}-alb"
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups: [ !Ref SgAlbId ]
+      Subnets: [ !Ref PublicSubnetAId, !Ref PublicSubnetBId ]
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-alb" } ]
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    # Unlike Terraform's min_elb_capacity, CloudFormation completes the ASG once instances
+    # launch (the golden-AMI instances do not run cfn helpers, so they cannot cfn-signal).
+    # deploy.sh polls target health after this stack to make total timing comparable.
+    Properties:
+      AutoScalingGroupName: !Sub "${ProjectName}-${StackLabel}-asg"
+      MinSize: !Ref MinSize
+      MaxSize: !Ref MaxSize
+      DesiredCapacity: !Ref DesiredCapacity
+      VPCZoneIdentifier: [ !Ref PrivateAppSubnetAId, !Ref PrivateAppSubnetBId ]
+      TargetGroupARNs: [ !Ref TargetGroup ]
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-wp-asg", PropagateAtLaunch: true }
+
+Outputs:
+  AlbDnsName:
+    Value: !GetAtt LoadBalancer.DNSName
+  AsgName:
+    Value: !Ref AutoScalingGroup
+  TargetGroupArn:
+    Value: !Ref TargetGroup

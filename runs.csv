@@ -1,0 +1,32 @@
+run_id,date,stack,tf_apply_s,config_s,total_s,status,error_category,log_path
+1,2026-05-18 05:07,Ansible,1595.9,235.0,1830.9,Success,None,logs/run-001-ansible-20260518-050706.log
+2,2026-05-25 16:40,Chef,1587.5,139.0,1726.5,Success,None,logs/run-002-chef-20260525-164029.log
+3,2026-05-25 18:25,Ansible,1555.6,294.0,1849.6,Success,None,logs/run-003-ansible-20260525-182555.log
+4,2026-06-05 12:06,Chef,1607.3,309.0,1916.3,Success,None,logs/run-004-chef-20260605-120626.log
+5,2026-06-05 12:51,Ansible,1639.1,339.0,1978.1,Success,None,logs/run-005-ansible-20260605-125148.log
+6,2026-06-05 13:43,Chef,1589.4,151.0,1740.4,Success,None,logs/run-006-chef-20260605-134356.log
+7,2026-06-05 14:34,Ansible,1819.8,250.0,2069.8,Success,None,logs/run-007-ansible-20260605-143506.log
+8,2026-06-06 11:09,Chef,1583.8,146.0,1729.8,Success,None,logs/run-008-chef-20260606-110918.log
+9,2026-06-06 11:56,Ansible,1571.0,245.0,1816.0,Success,None,logs/run-009-ansible-20260606-115703.log
+10,2026-06-06 12:50,Chef,1639.0,151.0,1790.0,Success,None,logs/run-010-chef-20260606-125101.log
+11,2026-06-06 13:49,Ansible,1579.2,262.0,1841.2,Success,None,logs/run-011-ansible-20260606-135009.log
+12,2026-06-06 15:13,Chef,1581.3,142.0,1723.3,Success,None,logs/run-012-chef-20260606-151325.log
+13,2026-06-06 21:47,Ansible,1717.7,271.0,1988.7,Success,None,logs/run-013-ansible-20260606-214737.log
+14,2026-06-06 22:46,Chef,1598.3,155.0,1753.3,Success,None,logs/run-014-chef-20260606-224638.log
+16,2026-06-07 00:13,Chef,1534.3,130.0,1664.3,Success,None,logs/run-016-chef-20260607-001306.log
+17,2026-06-07 21:42,Ansible,1579.9,278.0,1857.9,Success,None,logs/run-017-ansible-20260607-214243.log
+18,2026-06-07 22:34,Chef,1656.4,147.0,1803.4,Success,None,logs/run-018-chef-20260607-223448.log
+19,2026-06-07 23:27,Ansible,,,3300.2,Fail,Script timeout (>55 min) :: EFS-latency stall on recursive chmod over wp-content (Set file permissions to 644); identical task succeeded 8x prior; shared with Chef recipe (not Ansible-specific),logs/run-019-ansible-20260607-232722.log
+20,2026-06-08 00:39,Chef,1523.0,147.0,1670.0,Success,None,logs/run-020-chef-20260608-003923.log
+21,2026-06-08 15:50,Ansible,1595.0,267.0,1862.0,Success,None,logs/run-021-ansible-20260608-155100.log
+22,2026-06-08 22:30,Ansible,1593.2,255.0,1848.2,Success,None,logs/run-022-ansible-20260608-223039.log
+23,2026-06-27 16:59,CloudFormation,1677.3,66.0,1743.3,Success,None,logs/run-023-cloudformation-20260627-165914.log
+24,2026-06-27 17:52,CloudFormation,1670.3,67.0,1737.3,Success,None,logs/run-024-cloudformation-20260627-175206.log
+25,2026-06-28 13:37,CloudFormation,1855.5,65.0,1920.5,Success,None,logs/run-025-cloudformation-20260628-133702.log
+26,2026-06-28 14:28,CloudFormation,1676.6,67.0,1743.6,Success,None,logs/run-026-cloudformation-20260628-142818.log
+27,2026-06-28 15:57,CloudFormation,1733.2,70.0,1803.2,Success,None,logs/run-027-cloudformation-20260628-155714.log
+28,2026-06-28 16:49,CloudFormation,1745.8,73.0,1818.8,Success,None,logs/run-028-cloudformation-20260628-164906.log
+29,2026-06-29 00:46,CloudFormation,1692.7,68.0,1760.7,Success,None,logs/run-029-cloudformation-20260629-004604.log
+30,2026-06-29 01:40,CloudFormation,1753.0,69.0,1822.0,Success,None,logs/run-030-cloudformation-20260629-014037.log
+31,2026-06-29 02:32,CloudFormation,1673.4,68.0,1741.4,Success,None,logs/run-031-cloudformation-20260629-023234.log
+32,2026-06-29 03:34,CloudFormation,1690.2,69.0,1759.2,Success,None,logs/run-032-cloudformation-20260629-033444.log

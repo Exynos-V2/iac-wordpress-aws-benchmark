@@ -1,0 +1,7 @@
+name             'wordpress'
+maintainer       'skripsi-iac'
+license          'MIT'
+description      'Installs and configures WordPress on Ubuntu 24.04 (chef-zero local mode).'
+version          '0.1.0'
+chef_version     '>= 18.0'
+supports         'ubuntu', '>= 24.04'

@@ -1,0 +1,14 @@
+# Secrets and local state: never commit
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+.terraform/
+*.pem
+*.key
+cloudformation/parameters.json
+
+# Generated
+__pycache__/
+*.pyc
+grafik_uji_chef_ansible.png

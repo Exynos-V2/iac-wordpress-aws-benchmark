@@ -1,0 +1,9 @@
+==> iteration 4: change set on skripsi-iac-cfn-1
+==> iteration 4: change set on skripsi-iac-cfn-2
+==> iteration 4: drift detection on skripsi-iac-cfn-1
+==> iteration 4: drift detection on skripsi-iac-cfn-2
+CHANGESET_S1=0
+CHANGESET_S2=0
+DRIFT_S1=0
+DRIFT_S2=0
+TOTAL_CHANGES=0

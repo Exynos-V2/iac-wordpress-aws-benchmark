@@ -1,0 +1,494 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Skripsi IaC - CloudFormation Stack 1 (foundation + builder). Provisions the same
+  Multi-AZ network/data layer as the Terraform stacks and a builder EC2 in the public
+  subnet that installs WordPress via cfn-init (native CloudFormation port of the Ansible
+  playbook), records config timing markers as instance tags, and cfn-signals on completion.
+  A CreationPolicy gates stack completion on that signal. No NAT, no IAM creation,
+  AWS-managed encryption only (Learner Lab constraints).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: skripsi-iac
+  StackLabel:
+    Type: String
+    Default: cfn
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+  AvailabilityZoneA:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1a
+  AvailabilityZoneB:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1b
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+  BuilderInstanceType:
+    Type: String
+    Default: t3.small
+  DbInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  DbAllocatedStorage:
+    Type: Number
+    Default: 20
+  DbName:
+    Type: String
+    Default: wordpress
+  DbUsername:
+    Type: String
+    Default: wpadmin
+  DbPassword:
+    Type: String
+    NoEcho: true
+  UbuntuAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Resources:
+  # ---------------- Network ----------------
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-vpc" }
+        - { Key: Project, Value: !Ref ProjectName }
+        - { Key: Stack, Value: !Ref StackLabel }
+        - { Key: ManagedBy, Value: cloudformation }
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-igw" }
+        - { Key: ManagedBy, Value: cloudformation }
+
+  IgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Ref AvailabilityZoneA
+      MapPublicIpOnLaunch: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-public-subnet-a" }
+        - { Key: Tier, Value: public }
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Ref AvailabilityZoneB
+      MapPublicIpOnLaunch: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-public-subnet-b" }
+        - { Key: Tier, Value: public }
+
+  PrivateAppSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Ref AvailabilityZoneA
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-private-app-subnet-a" }
+        - { Key: Tier, Value: private-app }
+
+  PrivateAppSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: !Ref AvailabilityZoneB
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-private-app-subnet-b" }
+        - { Key: Tier, Value: private-app }
+
+  PrivateDataSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.21.0/24
+      AvailabilityZone: !Ref AvailabilityZoneA
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-private-data-subnet-a" }
+        - { Key: Tier, Value: private-data }
+
+  PrivateDataSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.22.0/24
+      AvailabilityZone: !Ref AvailabilityZoneB
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-private-data-subnet-b" }
+        - { Key: Tier, Value: private-data }
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-public-rt" }
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IgwAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Private route table has NO default route (no NAT). Instances reach RDS/EFS via the
+  # implicit local VPC route only. See README.md "Why no NAT Gateway".
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-private-rt" }
+
+  PublicSubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetA, RouteTableId: !Ref PublicRouteTable }
+  PublicSubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PublicSubnetB, RouteTableId: !Ref PublicRouteTable }
+  PrivateAppSubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateAppSubnetA, RouteTableId: !Ref PrivateRouteTable }
+  PrivateAppSubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateAppSubnetB, RouteTableId: !Ref PrivateRouteTable }
+  PrivateDataSubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateDataSubnetA, RouteTableId: !Ref PrivateRouteTable }
+  PrivateDataSubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PrivateDataSubnetB, RouteTableId: !Ref PrivateRouteTable }
+
+  # ---------------- Security groups ----------------
+  # Self-contained (CIDR) rules are inline; SG-to-SG rules are separate
+  # AWS::EC2::SecurityGroupIngress resources to avoid circular references.
+  SgAlb:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "ALB: allow HTTP from the internet."
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP from anywhere }
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-sg-alb" } ]
+
+  SgApp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "WordPress ASG instances: HTTP from ALB, SSH from VPC."
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref VpcCidr, Description: SSH from within VPC }
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-sg-app" } ]
+
+  SgRds:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "RDS MySQL: 3306 from app SG only."
+      VpcId: !Ref Vpc
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-sg-rds" } ]
+
+  SgEfs:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "EFS: NFS 2049 from app and builder SGs."
+      VpcId: !Ref Vpc
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-sg-efs" } ]
+
+  SgBuilder:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Builder EC2: SSH from anywhere, HTTP from ALB SG for smoke test."
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: 0.0.0.0/0, Description: SSH from anywhere }
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-sg-builder" } ]
+
+  SgAppIngressFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgApp
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SgAlb
+      Description: HTTP from ALB
+  SgRdsIngressFromApp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgRds
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref SgApp
+      Description: MySQL from app SG
+  SgEfsIngressFromApp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgEfs
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref SgApp
+      Description: NFS from app SG
+  SgEfsIngressFromBuilder:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgEfs
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref SgBuilder
+      Description: NFS from builder SG (AMI bake)
+  SgBuilderIngressFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SgBuilder
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref SgAlb
+      Description: HTTP from ALB SG (smoke test)
+
+  # ---------------- EFS ----------------
+  EfsFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      LifecyclePolicies:
+        - TransitionToIA: AFTER_30_DAYS
+      FileSystemTags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-efs-wp-content" }
+
+  EfsMountTargetA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PrivateDataSubnetA
+      SecurityGroups: [ !Ref SgEfs ]
+  EfsMountTargetB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsFileSystem
+      SubnetId: !Ref PrivateDataSubnetB
+      SecurityGroups: [ !Ref SgEfs ]
+
+  # ---------------- RDS ----------------
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: WordPress RDS subnet group (private data subnets)
+      SubnetIds: [ !Ref PrivateDataSubnetA, !Ref PrivateDataSubnetB ]
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-db-subnet-group" } ]
+
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    # CloudFormation defaults RDS DeletionPolicy to Snapshot; override so destroy is clean
+    # and leaves no Learner-Lab snapshot behind (mirrors skip_final_snapshot = true).
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub "${ProjectName}-${StackLabel}-mysql"
+      Engine: mysql
+      EngineVersion: "8.0"
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: !Ref DbAllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Ref DbName
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [ !Ref SgRds ]
+      PubliclyAccessible: false
+      MultiAZ: true
+      BackupRetentionPeriod: 0
+      DeletionProtection: false
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-mysql" } ]
+
+  # ---------------- Builder (configured via user-data, signals via WaitCondition) ----------------
+  # No cfn-bootstrap/cfn-signal (fragile on Ubuntu 24.04). The builder reports success/failure
+  # by curling a pre-signed WaitConditionHandle URL — plain curl, no pip, no awscli. Config
+  # timestamps are carried in the signal Data so deploy.sh can split config time without tags.
+  BuilderWaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  Builder:
+    Type: AWS::EC2::Instance
+    DependsOn: [ EfsMountTargetA, EfsMountTargetB, RdsInstance ]
+    Properties:
+      ImageId: !Ref UbuntuAmiId
+      InstanceType: !Ref BuilderInstanceType
+      SubnetId: !Ref PublicSubnetA
+      SecurityGroupIds: [ !Ref SgBuilder ]
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref InstanceProfileName
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: 16, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [ { Key: Name, Value: !Sub "${ProjectName}-${StackLabel}-builder" } ]
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash
+              exec > /var/log/builder-config.log 2>&1
+              set -x
+
+              # Signal the WaitCondition. $1=SUCCESS|FAILURE  $2=Data (config_start,config_end).
+              # On failure we send the tail of the log as Reason so it shows up in stack events.
+              signal() {
+                REASON=$(tail -c 700 /var/log/builder-config.log 2>/dev/null | tr '\n\r\t' '   ' | tr -d '"\\')
+                curl -s -X PUT -H 'Content-Type:' \
+                  --data-binary "{\"Status\":\"$1\",\"Reason\":\"$REASON\",\"UniqueId\":\"builder\",\"Data\":\"$2\"}" \
+                  "${SignalURL}" || true
+              }
+              trap 'rc=$?; signal FAILURE ""; exit $rc' ERR
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+
+              # config_start BEFORE package install, so config_s spans the whole configuration
+              # work (apt install + WordPress + config) — matching the Ansible/Chef stacks whose
+              # config_s covers the entire playbook/cookbook. Otherwise CFN config time is not
+              # comparable (it would exclude the slowest step, the package installation).
+              CONFIG_START=$(date +%s)
+              timeout 300 apt-get update -y
+              timeout 600 apt-get install -y nginx php8.3-fpm php8.3-mysql php8.3-gd php8.3-xml \
+                php8.3-mbstring php8.3-curl php8.3-zip mysql-client nfs-common wget unzip rsync curl
+
+              # EFS mount at wp-content via NFS (timeout guards against an unreachable target
+              # hanging forever on the 'hard' option, which previously caused a silent timeout).
+              mkdir -p /var/www/html/wp-content
+              timeout 180 mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport \
+                ${EfsDns}:/ /var/www/html/wp-content
+              grep -q "${EfsDns}" /etc/fstab || echo "${EfsDns}:/ /var/www/html/wp-content nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+              chown www-data:www-data /var/www/html/wp-content
+
+              # Download + extract WordPress (preserve EFS-mounted wp-content)
+              if [ ! -f /var/www/html/wp-settings.php ]; then
+                timeout 300 wget -q https://wordpress.org/latest.tar.gz -O /tmp/wordpress.tar.gz
+                tar xzf /tmp/wordpress.tar.gz -C /tmp/
+                rsync -a --exclude=wp-content/ /tmp/wordpress/ /var/www/html/
+              fi
+              if [ ! -f /var/www/html/wp-content/index.php ]; then
+                cp -a /tmp/wordpress/wp-content/. /var/www/html/wp-content/
+              fi
+
+              if [ ! -f /tmp/wp-salts.txt ]; then
+                timeout 60 curl -s https://api.wordpress.org/secret-key/1.1/salt/ -o /tmp/wp-salts.txt
+              fi
+
+              # Render wp-config.php (CFN-substituted head, then salts, then tail).
+              cat > /var/www/html/wp-config.php <<'WPHEAD'
+              <?php
+              define('DB_NAME',     '${DbName}');
+              define('DB_USER',     '${DbUser}');
+              define('DB_PASSWORD', '${DbPassword}');
+              define('DB_HOST',     '${RdsEndpoint}');
+              define('DB_CHARSET',  'utf8mb4');
+              define('DB_COLLATE',  '');
+
+              WPHEAD
+              cat /tmp/wp-salts.txt >> /var/www/html/wp-config.php
+              cat >> /var/www/html/wp-config.php <<'WPTAIL'
+
+              $table_prefix = 'wp_';
+              define('WP_DEBUG', false);
+              if ( ! defined( 'ABSPATH' ) ) {
+                  define( 'ABSPATH', __DIR__ . '/' );
+              }
+              require_once ABSPATH . 'wp-settings.php';
+              WPTAIL
+              chown www-data:www-data /var/www/html/wp-config.php
+              chmod 640 /var/www/html/wp-config.php
+
+              find /var/www/html -type d -exec chmod 755 {} +
+              find /var/www/html -type f ! -name wp-config.php -exec chmod 644 {} +
+              chown -R www-data:www-data /var/www/html
+
+              cat > /etc/nginx/sites-available/wordpress <<'NGINXCONF'
+              server {
+                  listen 80 default_server;
+                  listen [::]:80 default_server;
+                  server_name _;
+                  root /var/www/html;
+                  index index.php index.html;
+                  location / { try_files $uri $uri/ /index.php?$args; }
+                  location ~ \.php$ {
+                      include snippets/fastcgi-php.conf;
+                      fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+                  }
+                  location ~ /\.ht { deny all; }
+              }
+              NGINXCONF
+              rm -f /etc/nginx/sites-enabled/default
+              ln -sf /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/wordpress
+              nginx -t
+              systemctl enable php8.3-fpm nginx
+              systemctl restart php8.3-fpm nginx
+
+              CONFIG_END=$(date +%s)
+              signal SUCCESS "$CONFIG_START,$CONFIG_END"
+            - EfsDns: !Sub "${EfsFileSystem}.efs.${AWS::Region}.amazonaws.com"
+              DbName: !Ref DbName
+              DbUser: !Ref DbUsername
+              DbPassword: !Ref DbPassword
+              RdsEndpoint: !GetAtt RdsInstance.Endpoint.Address
+              SignalURL: !Ref BuilderWaitHandle
+
+  BuilderWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Builder
+    Properties:
+      Handle: !Ref BuilderWaitHandle
+      Timeout: "1500"
+      Count: 1
+
+Outputs:
+  BuilderInstanceId:
+    Value: !Ref Builder
+  BuilderSignalData:
+    # {"builder":"<config_start>,<config_end>"} — deploy.sh parses this for config timing.
+    Value: !GetAtt BuilderWaitCondition.Data
+  VpcId:
+    Value: !Ref Vpc
+  PublicSubnetAId:
+    Value: !Ref PublicSubnetA
+  PublicSubnetBId:
+    Value: !Ref PublicSubnetB
+  PrivateAppSubnetAId:
+    Value: !Ref PrivateAppSubnetA
+  PrivateAppSubnetBId:
+    Value: !Ref PrivateAppSubnetB
+  SgAlbId:
+    Value: !Ref SgAlb
+  SgAppId:
+    Value: !Ref SgApp
+  EfsDnsName:
+    Value: !Sub "${EfsFileSystem}.efs.${AWS::Region}.amazonaws.com"
+  RdsEndpoint:
+    Value: !GetAtt RdsInstance.Endpoint.Address

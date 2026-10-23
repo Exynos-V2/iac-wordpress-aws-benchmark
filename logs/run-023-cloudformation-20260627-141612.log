@@ -1,0 +1,91 @@
+==> Deploying skripsi-iac-cfn-1 (network + data + builder + WordPress via cfn-init)
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+Successfully created/updated stack - skripsi-iac-cfn-1
+==> Baking golden AMI from builder i-02ccea94bfc8bf573
+==> Waiting for AMI ami-02dd5639b0f84848a to become available
+==> Deploying skripsi-iac-cfn-2 (Launch Template + ASG + ALB) from AMI ami-02dd5639b0f84848a
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+Successfully created/updated stack - skripsi-iac-cfn-2
+==> Waiting for ASG targets to pass ALB health checks
+Traceback (most recent call last):
+  File "urllib3/response.py", line 22, in <module>
+ModuleNotFoundError: No module named 'brotlicffi'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "aws.py", line 19, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/clidriver.py", line 21, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/session.py", line 27, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/client.py", line 16, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/waiter.py", line 19, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/docs/__init__.py", line 15, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/docs/service.py", line 13, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/docs/bcdoc/restdoc.py", line 16, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "awscli/botocore/compat.py", line 31, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "urllib3/__init__.py", line 18, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "urllib3/connectionpool.py", line 15, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "urllib3/_request_methods.py", line 10, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1342, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 938, in _load_unlocked
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "urllib3/response.py", line 24, in <module>
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1333, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1267, in _find_spec
+  File "<frozen importlib._bootstrap_external>", line 1292, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 1266, in _get_spec
+  File "pyimod02_importers.py", line 284, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 1365, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 152, in _path_stat
+KeyboardInterrupt
+[PYI-2422:ERROR] Failed to execute script 'aws' due to unhandled exception!

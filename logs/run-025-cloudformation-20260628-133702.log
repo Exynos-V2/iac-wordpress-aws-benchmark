@@ -1,0 +1,15 @@
+==> Deploying skripsi-iac-cfn-1 (network + data + builder + WordPress via cfn-init)
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+Successfully created/updated stack - skripsi-iac-cfn-1
+==> Baking golden AMI from builder i-074e163740ceb5b4a
+==> Waiting for AMI ami-023558eb9cde04c57 to become available
+==> Deploying skripsi-iac-cfn-2 (Launch Template + ASG + ALB) from AMI ami-023558eb9cde04c57
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+Successfully created/updated stack - skripsi-iac-cfn-2
+==> Waiting for ASG targets to pass ALB health checks
+==> Done. WordPress URL: http://skripsi-iac-cfn-alb-2023897630.us-east-1.elb.amazonaws.com/   (healthy targets: 1)
+ALB_DNS=skripsi-iac-cfn-alb-2023897630.us-east-1.elb.amazonaws.com

@@ -1,0 +1,8 @@
+==> Deploying skripsi-iac-cfn-1 (network + data + builder + WordPress via cfn-init)
+
+Waiting for changeset to be created..
+Waiting for stack create/update to complete
+
+aws: [ERROR]: Failed to create/update the stack. Run the following command
+to fetch the list of events leading up to the failure
+aws cloudformation describe-stack-events --stack-name skripsi-iac-cfn-1

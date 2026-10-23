@@ -1,0 +1,81 @@
+
+PLAY [Configure WordPress builder (Ubuntu 24.04)] ******************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Update apt cache (periodic 1h)] ******************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Install WordPress runtime packages] **************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Ensure wp-content mount point exists] ************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Mount EFS at wp-content via NFS (idempotent + fstab)] ********************
+ok: [<PUBLIC_IP>]
+
+TASK [Check whether WordPress is already extracted] ****************************
+ok: [<PUBLIC_IP>]
+
+TASK [Download latest WordPress tarball] ***************************************
+skipping: [<PUBLIC_IP>]
+
+TASK [Extract WordPress to /tmp] ***********************************************
+skipping: [<PUBLIC_IP>]
+
+TASK [Sync WordPress files to document root (preserve EFS-mounted wp-content)] ***
+ok: [<PUBLIC_IP>]
+
+TASK [Check whether EFS wp-content has been seeded] ****************************
+ok: [<PUBLIC_IP>]
+
+TASK [Seed EFS wp-content with bundled themes and plugins (one-time)] **********
+skipping: [<PUBLIC_IP>]
+
+TASK [Fetch WordPress salts (cached on disk so re-runs are idempotent)] ********
+changed: [<PUBLIC_IP>]
+
+TASK [Read cached WordPress salts] *********************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Render wp-config.php] ****************************************************
+changed: [<PUBLIC_IP>]
+
+TASK [Check whether permissions have already been applied (idempotency guard)] ***
+ok: [<PUBLIC_IP>]
+
+TASK [Recursively own WordPress tree as www-data] ******************************
+skipping: [<PUBLIC_IP>]
+
+TASK [Set directory permissions to 755] ****************************************
+skipping: [<PUBLIC_IP>]
+
+TASK [Set file permissions to 644 (excluding wp-config.php, which is 0640)] ****
+skipping: [<PUBLIC_IP>]
+
+TASK [Mark permissions as applied (idempotency sentinel)] **********************
+skipping: [<PUBLIC_IP>]
+
+TASK [Remove default nginx site] ***********************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Render WordPress nginx site] *********************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Enable WordPress nginx site] *********************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Validate nginx config] ***************************************************
+ok: [<PUBLIC_IP>]
+
+TASK [Ensure php8.3-fpm enabled and started] ***********************************
+ok: [<PUBLIC_IP>]
+
+TASK [Ensure nginx enabled and started] ****************************************
+ok: [<PUBLIC_IP>]
+
+PLAY RECAP *********************************************************************
+<PUBLIC_IP>             : ok=18   changed=2    unreachable=0    failed=0    skipped=7    rescued=0    ignored=0   
+

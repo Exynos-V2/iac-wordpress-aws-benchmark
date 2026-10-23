@@ -1,0 +1,105 @@
+[2026-06-08T17:01:00+00:00] INFO: Started Chef Infra Zero at chefzero://localhost:1 with repository at /tmp/chef (One version per cookbook)
+Chef Infra Client, version 18.10.17
+Patents: https://www.chef.io/patents
+Infra Phase starting
+[2026-06-08T17:01:00+00:00] INFO: *** Chef Infra Client 18.10.17 ***
+[2026-06-08T17:01:00+00:00] INFO: Platform: x86_64-linux
+[2026-06-08T17:01:00+00:00] INFO: Chef-client pid: 13862
+[2026-06-08T17:01:04+00:00] INFO: Setting the run_list to [#<Chef::RunList::RunListItem:0x00007529155720c0 @version=nil, @type=:recipe, @name="wordpress::default">] from CLI options
+[2026-06-08T17:01:04+00:00] INFO: Run List is [recipe[wordpress::default]]
+[2026-06-08T17:01:04+00:00] INFO: Run List expands to [wordpress::default]
+[2026-06-08T17:01:04+00:00] INFO: Starting Chef Infra Client Run for builder
+[2026-06-08T17:01:04+00:00] INFO: Running start handlers
+[2026-06-08T17:01:04+00:00] INFO: Start handlers complete.
+Resolving cookbooks for run list: ["wordpress::default"]
+[2026-06-08T17:01:04+00:00] INFO: Loading cookbooks [wordpress@0.1.0]
+Synchronizing cookbooks:
+  - wordpress (0.1.0)
+Installing cookbook gem dependencies:
+Compiling cookbooks...
+Loading Chef InSpec profile files:
+Loading Chef InSpec input files:
+Loading Chef InSpec waiver files:
+Converging 33 resources
+Recipe: wordpress::packages
+  * apt_update[periodic 1h cache refresh] action periodic[2026-06-08T17:01:05+00:00] INFO: Processing apt_update[periodic 1h cache refresh] action periodic (wordpress::packages line 1)
+ (up to date)
+  * apt_package[nginx] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[nginx] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-fpm] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-fpm] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-mysql] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-mysql] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-gd] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-gd] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-xml] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-xml] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-mbstring] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-mbstring] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-curl] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-curl] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[php8.3-zip] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[php8.3-zip] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[mysql-client] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[mysql-client] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[nfs-common] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[nfs-common] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[wget] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[wget] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[unzip] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[unzip] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[rsync] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[rsync] action install (wordpress::packages line 22)
+ (up to date)
+  * apt_package[curl] action install[2026-06-08T17:01:05+00:00] INFO: Processing apt_package[curl] action install (wordpress::packages line 22)
+ (up to date)
+Recipe: wordpress::efs
+  * directory[/var/www/html/wp-content] action create[2026-06-08T17:01:05+00:00] INFO: Processing directory[/var/www/html/wp-content] action create (wordpress::efs line 1)
+ (up to date)
+  * mount[/var/www/html/wp-content] action mount[2026-06-08T17:01:05+00:00] INFO: Processing mount[/var/www/html/wp-content] action mount (wordpress::efs line 8)
+ (up to date)
+  * mount[/var/www/html/wp-content] action enable[2026-06-08T17:01:05+00:00] INFO: Processing mount[/var/www/html/wp-content] action enable (wordpress::efs line 8)
+ (up to date)
+Recipe: wordpress::wordpress
+  * remote_file[/tmp/wordpress.tar.gz] action create[2026-06-08T17:01:05+00:00] INFO: Processing remote_file[/tmp/wordpress.tar.gz] action create (wordpress::wordpress line 4)
+ (skipped due to not_if)
+  * execute[extract wordpress tarball] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[extract wordpress tarball] action run (wordpress::wordpress line 10)
+ (up to date)
+  * execute[sync wordpress to document root] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[sync wordpress to document root] action run (wordpress::wordpress line 15)
+ (up to date)
+  * execute[seed wp-content on EFS] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[seed wp-content on EFS] action run (wordpress::wordpress line 21)
+ (skipped due to not_if)
+  * execute[fetch wp salts] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[fetch wp salts] action run (wordpress::wordpress line 27)
+ (up to date)
+  * template[/var/www/html/wp-config.php] action create[2026-06-08T17:01:05+00:00] INFO: Processing template[/var/www/html/wp-config.php] action create (wordpress::wordpress line 32)
+ (up to date)
+  * execute[chown wordpress tree] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[chown wordpress tree] action run (wordpress::wordpress line 54)
+ (skipped due to not_if)
+  * execute[chmod dirs to 755] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[chmod dirs to 755] action run (wordpress::wordpress line 59)
+ (skipped due to not_if)
+  * execute[chmod files to 644] action run[2026-06-08T17:01:05+00:00] INFO: Processing execute[chmod files to 644] action run (wordpress::wordpress line 66)
+ (skipped due to not_if)
+  * file[/etc/wp-perms-done] action create[2026-06-08T17:01:05+00:00] INFO: Processing file[/etc/wp-perms-done] action create (wordpress::wordpress line 71)
+ (up to date)
+  * file[/etc/nginx/sites-enabled/default] action delete[2026-06-08T17:01:06+00:00] INFO: Processing file[/etc/nginx/sites-enabled/default] action delete (wordpress::wordpress line 75)
+ (up to date)
+  * template[/etc/nginx/sites-available/wordpress] action create[2026-06-08T17:01:06+00:00] INFO: Processing template[/etc/nginx/sites-available/wordpress] action create (wordpress::wordpress line 80)
+ (up to date)
+  * link[/etc/nginx/sites-enabled/wordpress] action create[2026-06-08T17:01:06+00:00] INFO: Processing link[/etc/nginx/sites-enabled/wordpress] action create (wordpress::wordpress line 92)
+ (up to date)
+  * execute[validate nginx config] action nothing[2026-06-08T17:01:06+00:00] INFO: Processing execute[validate nginx config] action nothing (wordpress::wordpress line 99)
+ (skipped due to action :nothing)
+  * service[php8.3-fpm] action enable[2026-06-08T17:01:06+00:00] INFO: Processing service[php8.3-fpm] action enable (wordpress::wordpress line 106)
+ (up to date)
+  * service[php8.3-fpm] action start[2026-06-08T17:01:06+00:00] INFO: Processing service[php8.3-fpm] action start (wordpress::wordpress line 106)
+ (up to date)
+  * service[nginx] action enable[2026-06-08T17:01:06+00:00] INFO: Processing service[nginx] action enable (wordpress::wordpress line 110)
+ (up to date)
+  * service[nginx] action start[2026-06-08T17:01:06+00:00] INFO: Processing service[nginx] action start (wordpress::wordpress line 110)
+ (up to date)
+[2026-06-08T17:01:06+00:00] INFO: Chef Infra Client Run complete in 1.755754513 seconds
+
+Running handlers:
+[2026-06-08T17:01:06+00:00] INFO: Running report handlers
+Running handlers complete
+[2026-06-08T17:01:06+00:00] INFO: Report handlers complete
+Infra Phase complete, 0/36 resources updated in 05 seconds

@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and fill in. Do NOT commit terraform.tfvars.
+
+# Existing key pair in the Learner Lab account (e.g. "vockey").
+key_pair_name = "vockey"
+
+# Path to the matching .pem file on Windows. Used by Terraform's remote-exec.
+private_key_path = "C:/Users/YOU/.ssh/labsuser.pem"
+
+# Same key, but as visible from inside WSL. Used by Ansible local-exec.
+private_key_wsl_path = "/mnt/c/Users/YOU/.ssh/labsuser.pem"
+
+# RDS master password. Make it strong; keep it out of git.
+db_password = "ChangeMe-Str0ng-Pass!"
+
+# Optional overrides — defaults shown.
+# aws_region            = "us-east-1"
+# project_name          = "skripsi-iac"
+# stack_name            = "ansible"
+# builder_instance_type = "t3.small"
+# app_instance_type     = "t3.small"
+# desired_capacity      = 2
+# instance_profile_name = "LabInstanceProfile"

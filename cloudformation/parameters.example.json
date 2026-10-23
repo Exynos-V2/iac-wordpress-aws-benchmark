@@ -1,0 +1,12 @@
+{
+  "KeyPairName": "vockey",
+  "DbPassword": "ChangeMe_Str0ngP4ss",
+  "DbName": "wordpress",
+  "DbUsername": "wpadmin",
+  "ProjectName": "skripsi-iac",
+  "StackLabel": "cfn",
+  "BuilderInstanceType": "t3.small",
+  "DbInstanceClass": "db.t3.micro",
+  "AvailabilityZoneA": "us-east-1a",
+  "AvailabilityZoneB": "us-east-1b"
+}

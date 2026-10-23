@@ -1,0 +1,191 @@
+---
+- name: Configure WordPress builder (Ubuntu 24.04)
+  hosts: builder
+  become: true
+  gather_facts: true
+
+  vars:
+    wp_root: /var/www/html
+    wp_content: /var/www/html/wp-content
+    php_socket: /run/php/php8.3-fpm.sock
+
+  tasks:
+    - name: Update apt cache (periodic 1h)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install WordPress runtime packages
+      apt:
+        name:
+          - nginx
+          - php8.3-fpm
+          - php8.3-mysql
+          - php8.3-gd
+          - php8.3-xml
+          - php8.3-mbstring
+          - php8.3-curl
+          - php8.3-zip
+          - mysql-client
+          - nfs-common
+          - wget
+          - unzip
+          - rsync
+          - curl
+        state: present
+
+    - name: Ensure wp-content mount point exists
+      file:
+        path: "{{ wp_content }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
+    - name: Mount EFS at wp-content via NFS (idempotent + fstab)
+      ansible.posix.mount:
+        path: "{{ wp_content }}"
+        src: "{{ efs_dns_name }}:/"
+        fstype: nfs4
+        opts: nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev
+        state: mounted
+
+    - name: Check whether WordPress is already extracted
+      stat:
+        path: "{{ wp_root }}/wp-settings.php"
+      register: wp_installed
+
+    - name: Download latest WordPress tarball
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: /tmp/wordpress.tar.gz
+        mode: "0644"
+      when: not wp_installed.stat.exists
+
+    - name: Extract WordPress to /tmp
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /tmp/
+        remote_src: yes
+        creates: /tmp/wordpress/wp-settings.php
+      when: not wp_installed.stat.exists
+
+    - name: Sync WordPress files to document root (preserve EFS-mounted wp-content)
+      command: rsync -a --exclude=wp-content/ /tmp/wordpress/ {{ wp_root }}/
+      args:
+        creates: "{{ wp_root }}/wp-settings.php"
+
+    - name: Check whether EFS wp-content has been seeded
+      stat:
+        path: "{{ wp_content }}/index.php"
+      register: wp_content_seeded
+
+    - name: Seed EFS wp-content with bundled themes and plugins (one-time)
+      command: cp -a /tmp/wordpress/wp-content/. {{ wp_content }}/
+      when: not wp_content_seeded.stat.exists
+
+    # The salt API returns NEW random salts every request, so re-fetching would
+    # change wp-config.php on every converge. Guard explicitly on the cache file
+    # (mirrors Chef's `creates`) — `force: no` alone proved unreliable here.
+    - name: Check whether WordPress salts are already cached
+      stat:
+        path: /tmp/wp-salts.txt
+      register: wp_salts_file
+
+    - name: Fetch WordPress salts (only when not cached, so re-runs are idempotent)
+      get_url:
+        url: https://api.wordpress.org/secret-key/1.1/salt/
+        dest: /tmp/wp-salts.txt
+        mode: "0644"
+      when: not wp_salts_file.stat.exists
+
+    - name: Read cached WordPress salts
+      slurp:
+        src: /tmp/wp-salts.txt
+      register: wp_salts_b64
+
+    - name: Render wp-config.php
+      template:
+        src: wp-config.php.j2
+        dest: "{{ wp_root }}/wp-config.php"
+        owner: www-data
+        group: www-data
+        mode: "0640"
+      vars:
+        wp_salts: "{{ wp_salts_b64.content | b64decode }}"
+
+    # Idempotency: the permission setup runs once on a fresh builder. The
+    # /etc/wp-perms-done sentinel makes any re-converge a no-op (0 changed),
+    # mirroring the Chef recipe. First-run behaviour is unchanged.
+    - name: Check whether permissions have already been applied (idempotency guard)
+      stat:
+        path: /etc/wp-perms-done
+      register: wp_perms_done
+
+    - name: Recursively own WordPress tree as www-data
+      file:
+        path: "{{ wp_root }}"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+      when: not wp_perms_done.stat.exists
+
+    - name: Set directory permissions to 755
+      command: find {{ wp_root }} -type d -exec chmod 755 {} +
+      when: not wp_perms_done.stat.exists
+
+    - name: Set file permissions to 644 (excluding wp-config.php, which is 0640)
+      command: find {{ wp_root }} -type f ! -name wp-config.php -exec chmod 644 {} +
+      when: not wp_perms_done.stat.exists
+
+    - name: Mark permissions as applied (idempotency sentinel)
+      file:
+        path: /etc/wp-perms-done
+        state: touch
+      when: not wp_perms_done.stat.exists
+      changed_when: false
+
+    - name: Remove default nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: reload nginx
+
+    - name: Render WordPress nginx site
+      template:
+        src: nginx-wordpress.conf.j2
+        dest: /etc/nginx/sites-available/wordpress
+        owner: root
+        group: root
+        mode: "0644"
+      notify: reload nginx
+
+    - name: Enable WordPress nginx site
+      file:
+        src: /etc/nginx/sites-available/wordpress
+        dest: /etc/nginx/sites-enabled/wordpress
+        state: link
+      notify: reload nginx
+
+    - name: Validate nginx config
+      command: nginx -t
+      changed_when: false
+
+    - name: Ensure php8.3-fpm enabled and started
+      service:
+        name: php8.3-fpm
+        enabled: yes
+        state: started
+
+    - name: Ensure nginx enabled and started
+      service:
+        name: nginx
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded
